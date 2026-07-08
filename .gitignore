@@ -1,4 +1,5 @@
 data/policy.json
 data/policy_td.json
+.venv/
 __pycache__/
 *.pyc

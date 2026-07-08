@@ -1,6 +1,7 @@
-const rows = 8;
-const cols = 8;
-const tile = 60;
+const rows = 10;
+const cols = 10;
+const tile = 44;
+const MONSTER_TICK_MS = 350;
 const actions = ["up", "down", "left", "right"];
 const deltas = {
   up: [-1, 0],
@@ -66,6 +67,7 @@ let keyPos = [0, 0];
 let hasKey = false;
 let done = false;
 let lastDecision = null;
+let monsterTimer = null;
 const episodeStats = {
   exploit: 0,
   explore: 0,
@@ -73,6 +75,9 @@ const episodeStats = {
   fallback: 0,
 };
 const MAX_LOG_ENTRIES = 12;
+
+canvas.width = cols * tile;
+canvas.height = rows * tile;
 
 function setPolicyDescription(sourceKey, meta) {
   const desc = POLICY_DESCRIPTIONS[sourceKey] || POLICY_DESCRIPTIONS.online;
@@ -228,7 +233,7 @@ function logDecision(decision) {
 
 function randomizeWorld() {
   barriers = new Set();
-  const count = 8;
+  const count = 24;
   while (barriers.size < count) {
     const p = [Math.floor(Math.random() * rows), Math.floor(Math.random() * cols)];
     barriers.add(key(p));
@@ -317,9 +322,20 @@ function onPlayerMove(action) {
   player = nextPlayer;
   checkKeyPickup();
   checkPlayerGoal();
-  if (!done) stepMonster();
-  else updateDebugPanel();
+  updateDebugPanel();
   draw();
+}
+
+function startMonsterLoop() {
+  if (monsterTimer !== null) {
+    clearInterval(monsterTimer);
+  }
+
+  monsterTimer = setInterval(() => {
+    if (done) return;
+    stepMonster();
+    draw();
+  }, MONSTER_TICK_MS);
 }
 
 function mapKeyToAction(evtKey) {
@@ -389,6 +405,7 @@ async function init() {
   debugPanel.hidden = !debugToggle.checked;
   await loadPolicy(policySelect.value);
   randomizeWorld();
+  startMonsterLoop();
   draw();
 }
 

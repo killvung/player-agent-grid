@@ -6,7 +6,8 @@ The player tries to collect a key, unlock the door (goal), and survive while a m
 ## What This Project Includes
 
 - `web/`: browser game (player movement, monster behavior, debug panel, policy switcher)
-- `training/`: Python training scripts for monster policies
+- `training/`: Python training scripts for monster policies (Gymnasium env)
+  - `env.py`: `MonsterGridEnv` Gymnasium environment
   - `train_policy_online.py`: online policy gradient (REINFORCE-style)
   - `train_policy_td.py`: TD SARSA control
 - `data/`: generated policy artifacts (ignored by git)
@@ -14,7 +15,7 @@ The player tries to collect a key, unlock the door (goal), and survive while a m
 ## Game Rules
 
 - Player (blue) moves with arrow keys or WASD.
-- Monster (red) moves once per player move.
+- Monster (red) moves on its own timer (not tied to player input).
 - Player must pick up the key (yellow) before entering the goal door.
 - Door/goal is orange when locked, green when unlocked.
 - If monster reaches player: monster wins.
@@ -33,6 +34,14 @@ Open:
 - `http://localhost:8000/web/index.html`
 
 ## Train Policies
+
+Install Python dependencies (Gymnasium):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 Generate online policy:
 

@@ -21,7 +21,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from env import GridWorld
+from env import MonsterGridEnv
 
 
 def argmax(values: List[float]) -> int:
@@ -62,7 +62,7 @@ def run_online_policy_training(
     lr: float = 0.03,
     temperature: float = 1.0,
 ) -> Dict[str, List[float]]:
-    env = GridWorld(rows=8, cols=8, seed=42)
+    env = MonsterGridEnv(rows=10, cols=10, barrier_count=24, max_steps=max_steps)
     rng = random.Random(42)
 
     # preferences[s][a] are unnormalized action preferences (logits).
@@ -70,7 +70,10 @@ def run_online_policy_training(
     preferences: Dict[str, List[float]] = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])
 
     for _ in range(episodes):
-        state = env.reset(barrier_count=8)
+        _, info = env.reset(
+            seed=rng.randrange(1_000_000), options={"barrier_count": 24}
+        )
+        state = info["state_key"]
 
         # Trajectory stores (state_key, chosen_action_index, immediate_reward).
         # We’ll compute discounted returns G_t from these rewards after the episode.
@@ -79,12 +82,11 @@ def run_online_policy_training(
         for _ in range(max_steps):
             probs = softmax(preferences[state], temperature=temperature)
             action_idx = sample_action(probs, rng)
-            action = env.ACTIONS[action_idx]
-            result = env.step(action)
-            trajectory.append((state, action_idx, result.reward))
+            _, reward, terminated, truncated, info = env.step(action_idx)
+            trajectory.append((state, action_idx, reward))
 
-            state = result.next_state
-            if result.done:
+            state = info["state_key"]
+            if terminated or truncated:
                 break
 
         # Monte Carlo return:
@@ -111,7 +113,9 @@ def run_online_policy_training(
     return dict(preferences)
 
 
-def export_policy(preferences: Dict[str, List[float]], out_path: str | None = None) -> None:
+def export_policy(
+    preferences: Dict[str, List[float]], out_path: str | None = None
+) -> None:
     # For browser use we export a *deterministic* policy table: state_key -> argmax action.
     # (At runtime the game can still add exploration via epsilon if you want.)
     actions = ["up", "down", "left", "right"]
@@ -124,7 +128,7 @@ def export_policy(preferences: Dict[str, List[float]], out_path: str | None = No
         "meta": {
             "algo": "online_policy_gradient",
             "actions": actions,
-            "notes": "Tabular softmax policy trained with online REINFORCE updates.",
+            "notes": "Tabular softmax policy trained with online REINFORCE updates in Gymnasium.",
             "how_to_read_policy": [
                 "Each key in `policy` is a full game state string.",
                 "State format is `p=row,col|m=row,col|g=row,col`.",

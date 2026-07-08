@@ -14,9 +14,9 @@ Key idea:
   and then Q(s,a) ← Q(s,a) + α δ
 
 Notes for this specific classroom game:
-- The environment currently has a moving player in the browser.
-  During training we approximate that by randomly moving the player sometimes
-  (see maybe_move_player). This keeps the monster from overfitting to a static player.
+- The browser game has a moving human player.
+  During training we set `player_move_prob` on the Gymnasium env so the monster
+  learns against changing player positions rather than a frozen target.
 """
 
 import json
@@ -25,7 +25,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
-from env import GridWorld
+from env import MonsterGridEnv
 
 
 def argmax(values: List[float]) -> int:
@@ -45,21 +45,6 @@ def epsilon_greedy(values: List[float], epsilon: float, rng: random.Random) -> i
     return argmax(values)
 
 
-def maybe_move_player(env: GridWorld, rng: random.Random, move_prob: float = 0.7) -> None:
-    """
-    Simple training-time approximation of an interactive opponent.
-
-    In the actual web game, the player is controlled by a human.
-    For offline training we inject stochastic player motion so the monster learns
-    to respond to changing player positions rather than a frozen target.
-    """
-    if rng.random() > move_prob:
-        return
-    moves = env.valid_moves(env.player)
-    if moves:
-        env.set_player_action(rng.choice(moves))
-
-
 def run_td_training(
     episodes: int = 8000,
     max_steps: int = 100,
@@ -67,30 +52,35 @@ def run_td_training(
     gamma: float = 0.95,
     epsilon_start: float = 0.9,
     epsilon_end: float = 0.05,
+    player_move_prob: float = 0.7,
 ) -> Dict[str, List[float]]:
-    env = GridWorld(rows=8, cols=8, seed=7)
+    env = MonsterGridEnv(
+        rows=10,
+        cols=10,
+        barrier_count=24,
+        player_move_prob=player_move_prob,
+        max_steps=max_steps,
+    )
     rng = random.Random(7)
 
     # q_values[s][a] is the learned expected discounted return if the monster takes action a in state s.
     q_values: Dict[str, List[float]] = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])
 
     for ep in range(episodes):
-        state = env.reset(barrier_count=8)
+        _, info = env.reset(seed=ep, options={"barrier_count": 24})
+        state = info["state_key"]
         epsilon = epsilon_start + (epsilon_end - epsilon_start) * (ep / max(1, episodes - 1))
 
         # SARSA is "on-policy": we select an action with the current epsilon-greedy policy
         # and we bootstrap from the value of the *next action chosen by that same policy*.
         action_idx = epsilon_greedy(q_values[state], epsilon, rng)
         for _ in range(max_steps):
-            maybe_move_player(env, rng)
+            _, reward, terminated, truncated, info = env.step(action_idx)
+            next_state = info["state_key"]
 
-            action = env.ACTIONS[action_idx]
-            result = env.step(action)
-            next_state = result.next_state
-
-            if result.done:
+            if terminated or truncated:
                 # Terminal transition: no bootstrap term.
-                td_target = result.reward
+                td_target = reward
                 td_error = td_target - q_values[state][action_idx]
                 q_values[state][action_idx] += alpha * td_error
                 break
@@ -99,7 +89,7 @@ def run_td_training(
             next_action_idx = epsilon_greedy(q_values[next_state], epsilon, rng)
 
             # TD target includes bootstrap estimate of Q(s',a').
-            td_target = result.reward + gamma * q_values[next_state][next_action_idx]
+            td_target = reward + gamma * q_values[next_state][next_action_idx]
             td_error = td_target - q_values[state][action_idx]
             q_values[state][action_idx] += alpha * td_error
 
@@ -121,7 +111,7 @@ def export_policy(q_values: Dict[str, List[float]], out_path: str | None = None)
         "meta": {
             "algo": "td_sarsa",
             "actions": actions,
-            "notes": "Tabular TD control using SARSA(0) with epsilon-greedy exploration.",
+            "notes": "Tabular TD control using SARSA(0) with epsilon-greedy exploration in Gymnasium.",
             "how_to_read_policy": [
                 "Each key in `policy` is a full game state string.",
                 "State format is `p=row,col|m=row,col|g=row,col`.",

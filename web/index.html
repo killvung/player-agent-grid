@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Player-Agent Grid Game</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Player-Agent Grid Game</h1>
+      <p>Arrow keys / WASD to move player (blue). Grab the key (yellow), then reach the door-goal (orange/green). Monster is red.</p>
+      <div id="hud">
+        <label for="policySelect">Monster policy:</label>
+        <select id="policySelect">
+          <option value="online">Online policy gradient</option>
+          <option value="td">TD SARSA</option>
+          <option value="greedy">Greedy chase (no policy)</option>
+        </select>
+        <button id="resetBtn">Reset</button>
+        <span id="status">Loading policy...</span>
+      </div>
+      <div id="policyDescription" role="note" aria-live="polite"></div>
+      <div id="debugControls">
+        <label>
+          <input type="checkbox" id="debugToggle" />
+          Show agent debug
+        </label>
+        <label for="epsilonSlider">
+          Epsilon (explore):
+          <input type="range" id="epsilonSlider" min="0" max="100" value="0" />
+          <span id="epsilonValue">0.00</span>
+        </label>
+      </div>
+      <div id="gameLayout">
+        <canvas id="game" width="480" height="480"></canvas>
+        <aside id="debugPanel" hidden>
+          <h2>Agent debug</h2>
+          <dl id="debugFields">
+            <dt>State key</dt>
+            <dd id="dbgState">—</dd>
+            <dt>Policy action</dt>
+            <dd id="dbgPolicyAction">—</dd>
+            <dt>Exploit action</dt>
+            <dd id="dbgExploitAction">—</dd>
+            <dt>Chosen action</dt>
+            <dd id="dbgChosenAction">—</dd>
+            <dt>Decision mode</dt>
+            <dd id="dbgDecisionMode">—</dd>
+            <dt>Action source</dt>
+            <dd id="dbgActionSource">—</dd>
+            <dt>Valid moves</dt>
+            <dd id="dbgValidMoves">—</dd>
+          </dl>
+          <h3>Episode stats</h3>
+          <ul id="debugStats">
+            <li>Exploit: <span id="statExploit">0</span></li>
+            <li>Explore: <span id="statExplore">0</span></li>
+            <li>Policy hits: <span id="statPolicyHits">0</span></li>
+            <li>Fallback (greedy): <span id="statFallback">0</span></li>
+          </ul>
+          <h3>Recent decisions</h3>
+          <ol id="decisionLog" reversed></ol>
+        </aside>
+      </div>
+    </main>
+    <script src="./game.js"></script>
+  </body>
+</html>

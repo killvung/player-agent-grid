@@ -1,0 +1,4 @@
+data/policy.json
+data/policy_td.json
+__pycache__/
+*.pyc

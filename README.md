@@ -168,3 +168,13 @@ python3 training/push_policies_to_hf.py
 - Toggle debug panel in UI.
 - Adjustable epsilon slider for explore vs exploit behavior.
 - Shows selected action source (`policy_table` vs fallback), episode counts, and recent decisions.
+
+
+## Improvement
+Have a better policy and MDP: Currently, states in MDP and the monster policy are dumb as seen. Modify to instead use the distance between the player and the monster, and the walls in all four directions. That way, the monster can instantly navigate any randomly generated maze layout without exploding the table size, allowing it to seamlessly cut corners and aggressively hunt the player down, completely resolving the sample starvation problem by forcing it to learn universal spatial concepts rather than memorizing absolute coordinates. Universal Obstacle Learning and True Hunting Vectors are required for better monster. 
+
+Or just use Function Approximation already...
+
+Planning methods: A search-based planner such as MCTS could serve as a stronger baseline or teacher policy, especially when the player moves unpredictably.
+
+Scaling beyond tabular methods: On a 10x10 grid, a lookup table is still feasible. On a 100x100 grid, the state space grows quickly and tabular REINFORCE/SARSA are no longer practical. That is where Chapter 9 beyond ideas become relevant: function approximation, neural network policies, and value networks to generalize across states instead of storing one entry per state.

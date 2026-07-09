@@ -1,5 +1,5 @@
-data/policy.json
-data/policy_td.json
+trained_policies/monster_policy_reinforce.json
+trained_policies/monster_policy_sarsa.json
 .venv/
 __pycache__/
 *.pyc

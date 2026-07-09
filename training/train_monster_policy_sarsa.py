@@ -129,7 +129,7 @@ def export_policy(q_values: Dict[str, List[float]], out_path: str | None = None)
 
     if out_path is None:
         root = Path(__file__).resolve().parent.parent
-        out_path = str(root / "data" / "policy_td.json")
+        out_path = str(root / "trained_policies" / "monster_policy_sarsa.json")
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -138,4 +138,4 @@ def export_policy(q_values: Dict[str, List[float]], out_path: str | None = None)
 if __name__ == "__main__":
     q = run_td_training()
     export_policy(q)
-    print("Wrote TD policy JSON to data/policy_td.json")
+    print("Wrote TD policy JSON to trained_policies/monster_policy_sarsa.json")

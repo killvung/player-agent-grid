@@ -146,7 +146,7 @@ def export_policy(
 
     if out_path is None:
         root = Path(__file__).resolve().parent.parent
-        out_path = str(root / "data" / "policy.json")
+        out_path = str(root / "trained_policies" / "monster_policy_reinforce.json")
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -155,4 +155,4 @@ def export_policy(
 if __name__ == "__main__":
     prefs = run_online_policy_training()
     export_policy(prefs)
-    print("Wrote policy JSON to data/policy.json")
+    print("Wrote policy JSON to trained_policies/monster_policy_reinforce.json")

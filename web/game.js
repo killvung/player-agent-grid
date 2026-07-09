@@ -33,9 +33,18 @@ const statPolicyHits = document.getElementById("statPolicyHits");
 const statFallback = document.getElementById("statFallback");
 const decisionLog = document.getElementById("decisionLog");
 
+const POLICY_BASE =
+  "https://huggingface.co/killvung/player-agent-grid-policy/resolve/main";
+
 const POLICY_SOURCES = {
-  online: { path: "../data/policy.json", label: "Online policy gradient" },
-  td: { path: "../data/policy_td.json", label: "TD SARSA" },
+  online: {
+    path: `${POLICY_BASE}/monster_policy_reinforce.json`,
+    label: "Online policy gradient",
+  },
+  td: {
+    path: `${POLICY_BASE}/monster_policy_sarsa.json`,
+    label: "TD SARSA",
+  },
   greedy: { path: null, label: "Greedy chase" },
 };
 

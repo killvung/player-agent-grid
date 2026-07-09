@@ -33,8 +33,18 @@ const statPolicyHits = document.getElementById("statPolicyHits");
 const statFallback = document.getElementById("statFallback");
 const decisionLog = document.getElementById("decisionLog");
 
-const POLICY_BASE =
-  "https://huggingface.co/killvung/player-agent-grid-policy/resolve/main";
+function getPolicyBase() {
+  const cfg = window.APP_CONFIG ?? {};
+  if (cfg.policyBase) {
+    return cfg.policyBase.replace(/\/$/, "");
+  }
+  if (cfg.hfUsername && cfg.hfModelName) {
+    return `https://huggingface.co/${cfg.hfUsername}/${cfg.hfModelName}/resolve/main`;
+  }
+  return "../trained_policies";
+}
+
+const POLICY_BASE = getPolicyBase();
 
 const POLICY_SOURCES = {
   online: {

@@ -1,5 +1,7 @@
 trained_policies/monster_policy_reinforce.json
 trained_policies/monster_policy_sarsa.json
+.env
+web/config.js
 .venv/
 __pycache__/
 *.pyc

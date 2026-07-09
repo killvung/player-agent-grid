@@ -91,11 +91,10 @@ Outputs:
 Push policies to Hugging Face (for the Space and local web game):
 
 ```bash
-export $(grep -v '^#' .env | xargs)   # load HF_USERNAME from .env
 python3 training/push_policies_to_hf.py
 ```
 
-Requires `huggingface-cli login` once. The Space loads policies on next page load (hard-refresh if cached).
+Loads `HF_USERNAME` from `.env` automatically. Requires `huggingface-cli login` once.
 
 ## Policy Modes in Game
 
@@ -142,7 +141,6 @@ After linking, `git push origin main` updates GitHub and rebuilds the Space auto
 
 ```bash
 source .venv/bin/activate
-export $(grep -v '^#' .env | xargs)
 pip install huggingface_hub
 huggingface-cli login
 cp web/config.example.js web/config.js   # set hfUsername first
@@ -187,7 +185,6 @@ huggingface-cli login
 git push origin main
 
 # 2. Retrain policies → HF model repo
-export $(grep -v '^#' .env | xargs)
 python3 training/train_monster_policies.py
 python3 training/push_policies_to_hf.py
 ```

@@ -12,6 +12,7 @@ The player tries to collect a key, unlock the door (goal), and survive while a m
   - `train_monster_policy_reinforce.py`: online policy gradient (REINFORCE-style)
   - `train_monster_policy_sarsa.py`: TD SARSA control
   - `push_policies_to_hf.py`: upload policies to Hugging Face
+  - `push_space_to_hf.py`: upload web game to Hugging Face Space
 - `trained_policies/`: generated policy artifacts (ignored by git)
 - `.env.example` / `web/config.example.js`: Hugging Face username and repo config templates
 
@@ -140,35 +141,8 @@ After linking, `git push origin main` updates GitHub and rebuilds the Space auto
 **Option B — upload manually with the HF API** (flat Space layout at repo root):
 
 ```bash
-source .venv/bin/activate
-pip install huggingface_hub
-huggingface-cli login
 cp web/config.example.js web/config.js   # set hfUsername first
-
-python <<'PY'
-from huggingface_hub import HfApi
-from pathlib import Path
-import sys
-
-sys.path.insert(0, "training")
-from hf_config import hf_space_repo
-
-api = HfApi()
-root = Path("web")
-space_repo = hf_space_repo()
-for name in ["index.html", "game.js", "style.css", "config.js"]:
-    path = root / name
-    if not path.exists():
-        print(f"Skipping missing {name}")
-        continue
-    api.upload_file(
-        path_or_fileobj=path.read_bytes(),
-        path_in_repo=name,
-        repo_id=space_repo,
-        repo_type="space",
-        commit_message=f"Update {name}",
-    )
-PY
+python3 training/push_space_to_hf.py
 ```
 
 Use Option B for a standalone Space repo, or to upload `config.js` without pushing to GitHub.

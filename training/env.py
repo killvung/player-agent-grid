@@ -14,7 +14,15 @@ class MonsterGridEnv(gym.Env):
     Gymnasium environment for monster-vs-player grid chase.
 
     The agent controls the monster. The player may move stochastically during
-  training to approximate a human opponent in the browser game.
+    training to approximate a human opponent in the browser game.
+
+    Reward system (sparse, terminal-only):
+    - +1.0  monster catches the player (monster wins, episode ends)
+    - -1.0  player reaches the goal (player wins, episode ends)
+    -  0.0  all other steps, including timeouts at max_steps (truncated)
+
+    There is no per-step shaping (no distance bonus, no key/door logic).
+    The monster only learns from these two terminal outcomes.
     """
 
     metadata = {"render_modes": []}

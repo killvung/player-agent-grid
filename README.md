@@ -8,9 +8,12 @@ The player tries to collect a key, unlock the door (goal), and survive while a m
 - `web/`: browser game (player movement, monster behavior, debug panel, policy switcher)
 - `training/`: Python training scripts for monster policies (Gymnasium env)
   - `env.py`: `MonsterGridEnv` Gymnasium environment
+  - `train_monster_policies.py`: train both policies
   - `train_monster_policy_reinforce.py`: online policy gradient (REINFORCE-style)
   - `train_monster_policy_sarsa.py`: TD SARSA control
+  - `push_policies_to_hf.py`: upload policies to Hugging Face
 - `trained_policies/`: generated policy artifacts (ignored by git)
+- `.env.example` / `web/config.example.js`: Hugging Face username and repo config templates
 
 ## Game Rules
 
@@ -33,23 +36,48 @@ Open:
 
 - `http://localhost:8000/web/index.html`
 
+For HF-hosted policies locally, copy `web/config.example.js` to `web/config.js` and set your username. Without `config.js`, the game loads from `trained_policies/` instead.
+
+## Configuration
+
+Copy the example env file and set your Hugging Face username:
+
+```bash
+cp .env.example .env
+# edit .env: HF_USERNAME=your-hf-username
+```
+
+| Variable | Purpose |
+|----------|---------|
+| `HF_USERNAME` | Your Hugging Face account name |
+| `HF_MODEL_NAME` | Model repo name (default: `player-agent-grid-policy`) |
+| `HF_SPACE_NAME` | Space repo name (default: `player-agent-grid-game`) |
+| `HF_MODEL_REPO` | Optional full model repo id (`username/model-name`) |
+| `HF_SPACE_REPO` | Optional full Space repo id (`username/space-name`) |
+
+For the web game, copy `web/config.example.js` to `web/config.js` (gitignored) with the same username.
+
 ## Train Policies
 
-Install Python dependencies (Gymnasium):
+Install Python dependencies:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt   # gymnasium, numpy, huggingface_hub
 ```
 
-Generate online policy:
+Generate both policies:
+
+```bash
+python3 training/train_monster_policies.py
+```
+
+Or individually:
 
 ```bash
 python3 training/train_monster_policy_reinforce.py
 ```
-
-Generate TD policy:
 
 ```bash
 python3 training/train_monster_policy_sarsa.py
@@ -59,6 +87,15 @@ Outputs:
 
 - `trained_policies/monster_policy_reinforce.json`
 - `trained_policies/monster_policy_sarsa.json`
+
+Push policies to Hugging Face (for the Space and local web game):
+
+```bash
+export $(grep -v '^#' .env | xargs)   # load HF_USERNAME from .env
+python3 training/push_policies_to_hf.py
+```
+
+Requires `huggingface-cli login` once. The Space loads policies on next page load (hard-refresh if cached).
 
 ## Policy Modes in Game
 
@@ -71,13 +108,13 @@ Outputs:
 
 This project uses three repositories:
 
-| Repo | URL | What lives here |
-|------|-----|-----------------|
-| **GitHub** (source code) | [killvung/player-agent-grid](https://github.com/killvung/player-agent-grid) | Training scripts, web game, docs |
-| **HF Space** (live game) | [player-agent-grid-game](https://huggingface.co/spaces/killvung/player-agent-grid-game) | Playable browser game |
-| **HF Model** (policies) | [player-agent-grid-policy](https://huggingface.co/killvung/player-agent-grid-policy) | Trained policy JSON files |
+| Repo | What lives here |
+|------|-----------------|
+| **GitHub** (source code) | Training scripts, web game, docs |
+| **HF Space** (live game) | Playable browser game (`$HF_USERNAME/$HF_SPACE_NAME`) |
+| **HF Model** (policies) | Trained policy JSON files (`$HF_USERNAME/$HF_MODEL_NAME`) |
 
-The web game loads policies at runtime from the HF model repo (`web/game.js`). Policy files in `trained_policies/` are gitignored and are **not** pushed to GitHub.
+The web game loads policies at runtime from your HF model repo (`web/config.js`). Policy files in `trained_policies/` are gitignored and are **not** pushed to GitHub.
 
 ### Push code to GitHub
 
@@ -87,91 +124,73 @@ git commit -m "Describe your change"
 git push origin main
 ```
 
-Commit: `training/`, `web/`, `README.md`, `requirements.txt`, `.gitignore`  
-Do not commit: `trained_policies/*.json`, `.venv/`
+Commit: `training/`, `web/`, `README.md`, `requirements.txt`, `.gitignore`, `.env.example`, `web/config.example.js`  
+Do not commit: `trained_policies/*.json`, `.env`, `web/config.js`, `.venv/`
 
 ### Deploy the game (HF Space)
 
 **Option A — link GitHub (recommended, one-time setup):**
 
-1. Open [Space Settings → Repository](https://huggingface.co/spaces/killvung/player-agent-grid-game/settings)
-2. Connect `killvung/player-agent-grid`, branch `main`
-3. In Space settings, set **App file** to `web/index.html` (Static SDK)
+1. Open your Space **Settings → Repository** on Hugging Face
+2. Connect your GitHub repo, branch `main`
+3. Set **App file** to `web/index.html` (Static SDK)
+4. Add `web/config.js` to the Space separately (it is gitignored, so GitHub sync will not include it). Copy `web/config.example.js`, set `hfUsername`, and upload via the Space file editor or Option B below.
 
 After linking, `git push origin main` updates GitHub and rebuilds the Space automatically.
 
-**Option B — upload manually with the HF API:**
+**Option B — upload manually with the HF API** (flat Space layout at repo root):
 
 ```bash
 source .venv/bin/activate
+export $(grep -v '^#' .env | xargs)
 pip install huggingface_hub
 huggingface-cli login
+cp web/config.example.js web/config.js   # set hfUsername first
 
 python <<'PY'
 from huggingface_hub import HfApi
 from pathlib import Path
+import sys
+
+sys.path.insert(0, "training")
+from hf_config import hf_space_repo
 
 api = HfApi()
 root = Path("web")
-for name in ["index.html", "game.js", "style.css"]:
+space_repo = hf_space_repo()
+for name in ["index.html", "game.js", "style.css", "config.js"]:
+    path = root / name
+    if not path.exists():
+        print(f"Skipping missing {name}")
+        continue
     api.upload_file(
-        path_or_fileobj=(root / name).read_bytes(),
+        path_or_fileobj=path.read_bytes(),
         path_in_repo=name,
-        repo_id="killvung/player-agent-grid-game",
+        repo_id=space_repo,
         repo_type="space",
         commit_message=f"Update {name}",
     )
 PY
 ```
 
-Use Option B when you want to update the Space without pushing to GitHub.
-
-### Upload policies (HF Model repo)
-
-After retraining locally:
-
-```bash
-python3 training/train_monster_policy_reinforce.py
-python3 training/train_monster_policy_sarsa.py
-```
-
-Upload the new files (Space picks them up on next page load; no Space redeploy needed):
-
-```bash
-source .venv/bin/activate
-
-python <<'PY'
-from huggingface_hub import HfApi
-
-api = HfApi()
-repo = "killvung/player-agent-grid-policy"
-for local, remote in [
-    ("trained_policies/monster_policy_reinforce.json", "monster_policy_reinforce.json"),
-    ("trained_policies/monster_policy_sarsa.json", "monster_policy_sarsa.json"),
-]:
-    api.upload_file(
-        path_or_fileobj=local,
-        path_in_repo=remote,
-        repo_id=repo,
-        repo_type="model",
-        commit_message=f"Update {remote}",
-    )
-PY
-```
+Use Option B for a standalone Space repo, or to upload `config.js` without pushing to GitHub.
 
 ### Typical workflow
 
 ```bash
+# 0. One-time setup
+cp .env.example .env                  # set HF_USERNAME
+cp web/config.example.js web/config.js  # set hfUsername
+huggingface-cli login
+
 # 1. Edit code or game UI → GitHub (and Space if linked)
 git push origin main
 
-# 2. Retrain policies → HF model repo only
-python3 training/train_monster_policy_reinforce.py
-python3 training/train_monster_policy_sarsa.py
-# then run the upload script above
+# 2. Retrain policies → HF model repo
+export $(grep -v '^#' .env | xargs)
+python3 training/train_monster_policies.py
+python3 training/push_policies_to_hf.py
 ```
-
-Play online: [player-agent-grid-game](https://huggingface.co/spaces/killvung/player-agent-grid-game)
 
 ## Debug / Teaching Features
 
